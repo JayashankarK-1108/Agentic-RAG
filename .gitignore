@@ -47,7 +47,6 @@ frontend/build/
 frontend/dist/
 
 # Data files
-data/pdfs/*.pdf
 backend/app/db/feedback.json
 
 # Render/Deployment
