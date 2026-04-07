@@ -19,6 +19,7 @@ def extract_pdf(file_path):
         image_stats: {found, uploaded, failed}
     """
     try:
+        source = os.path.basename(file_path)   # e.g. "Proxy_Process.pdf"
         doc = fitz.open(file_path)
         pages = []
         found = uploaded = failed = 0
@@ -31,7 +32,7 @@ def extract_pdf(file_path):
                 try:
                     xref = img[0]
                     base = doc.extract_image(xref)
-                    url = upload_image(base["image"], f"p{pno}_{i}.png")
+                    url = upload_image(base["image"], f"p{pno}_{i}.png", source=source)
                     if url:
                         imgs.append(url)
                         uploaded += 1
@@ -57,6 +58,7 @@ def _upload_docx_images(file_path):
     """
     rel_to_url = {}
     found = uploaded = failed = 0
+    source = os.path.basename(file_path)   # e.g. "WLAN_Process.docx"
 
     try:
         doc = Document(file_path)
@@ -74,7 +76,7 @@ def _upload_docx_images(file_path):
             if img_data is None:
                 continue
             found += 1
-            url = upload_image(img_data, img_name)
+            url = upload_image(img_data, img_name, source=source)
             if url:
                 rel_to_url[rid] = url
                 uploaded += 1

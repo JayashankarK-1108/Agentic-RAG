@@ -25,15 +25,17 @@ def test_s3_connection():
     except Exception as e:
         return False, f"Cannot access bucket '{S3_BUCKET_NAME}': {e}"
 
-def upload_image(file_bytes, filename):
+def upload_image(file_bytes, filename, source=None):
     """
-    Upload image bytes to S3 and return a presigned URL valid for 7 days.
-    Presigned URLs work without making the bucket public.
+    Upload image bytes to S3 and return a presigned URL valid for 1 year.
+    Images are stored under images/<source>/<hash>_<filename> so each
+    document gets its own subfolder in S3.
     Returns the URL string, or None if upload fails.
     """
     try:
         content_hash = hashlib.md5(file_bytes).hexdigest()
-        key = f"images/{content_hash}_{filename}"
+        folder = f"images/{source}" if source else "images"
+        key = f"{folder}/{content_hash}_{filename}"
         s3.put_object(
             Bucket=S3_BUCKET_NAME,
             Key=key,
