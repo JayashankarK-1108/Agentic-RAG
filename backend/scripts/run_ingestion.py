@@ -2,7 +2,7 @@
 import glob
 import os
 import logging
-from app.ingestion.multimodal_loader import extract_pdf
+from app.ingestion.multimodal_loader import extract_document
 from app.ingestion.processor import create_steps
 from app.ingestion.embedder import store_steps
 from app.db.pinecone_client import clear_index, delete_by_source, get_index_stats
@@ -84,10 +84,13 @@ def _print_summary(doc_count, total_chunks, total_vectors, total_upserted,
 _print_header()
 
 pdf_dir   = os.path.join(os.path.dirname(__file__), "../../data/pdfs")
-pdf_files = glob.glob(os.path.join(pdf_dir, "*.pdf"))
+pdf_files = (
+    glob.glob(os.path.join(pdf_dir, "*.pdf")) +
+    glob.glob(os.path.join(pdf_dir, "*.docx"))
+)
 
 if not pdf_files:
-    print(f"\n  ⚠  No PDF files found in: {pdf_dir}\n{SEP}\n")
+    print(f"\n  ⚠  No documents found in: {pdf_dir}\n{SEP}\n")
 else:
     # Show current index state before starting
     stats_before = get_index_stats()
@@ -120,7 +123,7 @@ else:
                 deleted = True
                 print("✓ Done")
 
-            pages, img_stats = extract_pdf(pdf_path)
+            pages, img_stats = extract_document(pdf_path)
             steps            = create_steps(pages)
             result           = store_steps(steps, source=source)
 

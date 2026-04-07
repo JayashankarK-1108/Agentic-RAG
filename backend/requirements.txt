@@ -8,4 +8,5 @@ openai
 pinecone
 boto3
 pymupdf
+python-docx
 python-dotenv
