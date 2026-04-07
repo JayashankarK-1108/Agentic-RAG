@@ -1,22 +1,28 @@
 
+import re
 from typing import TypedDict, Optional, List
 from langgraph.graph import StateGraph
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from app.agent.tools import retrieve, store_feedback
 
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
+llm = ChatOpenAI(model="gpt-4o", temperature=0.2)
 
-SYSTEM_PROMPT = """You are a helpful IT Knowledge Base Assistant. \
-Your job is to answer user questions about IT processes and procedures \
-using only the context retrieved from the knowledge base.
+SYSTEM_PROMPT = """You are a helpful assistant that answers questions using the provided context.
 
 Guidelines:
-- Answer clearly and concisely based on the provided context.
-- Use numbered steps when explaining a process.
-- If the context does not contain enough information, say so honestly.
-- Do not make up information not present in the context.
-- Keep your response focused and practical."""
+1. Do not copy or paste text directly from the context.
+2. Interpret and rephrase the information so it feels like a natural conversation.
+3. Use the context as your source of truth, but explain it in your own words.
+4. If the context is insufficient, say:
+   "The provided context does not contain enough information to answer this question."
+5. Always provide a COMPLETE answer — cover ALL steps from the context, do not stop midway.
+6. Keep each step clear and conversational. Add small touches of warmth to make the response engaging.
+7. When your answer contains numbered steps, place one image marker on a new line immediately
+   after EACH step — assign them in order: Step 1 gets [IMAGE_1], Step 2 gets [IMAGE_2], and so on.
+   If there are more steps than images, reuse [IMAGE_1] after the last available marker.
+   If there are no images available, skip this rule.
+   Use the markers EXACTLY as shown — do not modify them."""
 
 CHITCHAT_PROMPT = """You are a friendly IT Knowledge Base Assistant. \
 Respond warmly to greetings and small talk in 1-2 sentences, \
@@ -84,16 +90,28 @@ def generate_node(state):
     ]
     answer = llm.invoke(messages).content
 
-    # ── Attach unique images from retrieved chunks ─────────────────
+    # ── Collect ordered, unique image URLs from retrieved chunks ───
     seen = set()
-    image_lines = []
+    images = []
     for s in steps:
         for img in s.get("images", []):
             if img and img not in seen:
                 seen.add(img)
-                image_lines.append(f"Image: {img}")
-    if image_lines:
-        answer += "\n\n" + "\n".join(image_lines)
+                images.append(img)
+
+    # ── Replace [IMAGE_N] markers with actual Image: <url> lines ───
+    # The LLM places [IMAGE_1], [IMAGE_2] … after each step.
+    # We map marker index → URL, cycling back to index 0 if there are
+    # more markers than images (as instructed in the system prompt).
+    if images:
+        def replace_marker(m):
+            n = int(m.group(1)) - 1          # [IMAGE_1] → index 0
+            url = images[n % len(images)]
+            return f"Image: {url}"
+        answer = re.sub(r'\[IMAGE_(\d+)\]', replace_marker, answer)
+    else:
+        # No images available — strip any leftover markers
+        answer = re.sub(r'\[IMAGE_\d+\]\n?', '', answer)
 
     return {"response": answer}
 
