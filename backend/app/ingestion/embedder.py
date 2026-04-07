@@ -16,5 +16,6 @@ def store_steps(steps, source="unknown"):
             "values": emb,
             "metadata": {"text": s["text"], "images": s["images"], "source": source}
         })
-    upsert(vectors)
+    upserted_count = upsert(vectors)
     logger.info(f"Stored {len(vectors)} vectors from source: {source}")
+    return {"vectors": len(vectors), "upserted": upserted_count}

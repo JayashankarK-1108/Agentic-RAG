@@ -14,7 +14,8 @@ def query(vector, top_k=5, filter=None):
 
 def upsert(vectors):
     try:
-        index.upsert(vectors)
+        response = index.upsert(vectors)
+        return response.upserted_count if hasattr(response, "upserted_count") else len(vectors)
     except Exception as e:
         print(f"Error upserting to Pinecone: {e}")
         raise
