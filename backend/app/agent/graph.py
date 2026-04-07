@@ -53,18 +53,23 @@ def generate_node(state):
     llm_response = llm.invoke(messages)
     answer = llm_response.content
 
-    # Collect unique image URLs from all retrieved steps
-    seen = set()
-    image_lines = []
-    for s in steps:
-        for img in s.get("images", []):
-            if img and img not in seen:
-                seen.add(img)
-                image_lines.append(f"Image: {img}")
+    # Only attach images if the answer references a process/procedure (not a greeting/chitchat)
+    process_keywords = ["step", "click", "open", "go to", "navigate", "select", "enter",
+                        "configure", "install", "enable", "disable", "set", "create",
+                        "process", "follow", "procedure"]
+    answer_lower = answer.lower()
+    is_process_answer = any(kw in answer_lower for kw in process_keywords)
 
-    # Append images after the LLM answer
-    if image_lines:
-        answer += "\n\n" + "\n".join(image_lines)
+    if is_process_answer:
+        seen = set()
+        image_lines = []
+        for s in steps:
+            for img in s.get("images", []):
+                if img and img not in seen:
+                    seen.add(img)
+                    image_lines.append(f"Image: {img}")
+        if image_lines:
+            answer += "\n\n" + "\n".join(image_lines)
 
     return {"response": answer}
 

@@ -10,13 +10,20 @@ embedder = OpenAIEmbeddings(model="text-embedding-3-small")
 
 _FEEDBACK_FILE = os.path.join(os.path.dirname(__file__), "../db/feedback.json")
 
+RELEVANCE_THRESHOLD = 0.40  # Minimum score to consider a result relevant
+
 def retrieve(query_text, department=None):
     try:
         emb = embedder.embed_query(query_text)
         filter_dict = {"department": {"$eq": department}} if department else None
         results = query(emb, filter=filter_dict)
+        matches = [
+            m for m in results.get("matches", [])
+            if m.get("score", 0) >= RELEVANCE_THRESHOLD
+        ]
+        logger.info(f"Retrieved {len(matches)} relevant chunks (threshold={RELEVANCE_THRESHOLD})")
         return [{"text": m["metadata"]["text"], "images": m["metadata"].get("images", [])}
-                for m in results.get("matches", [])]
+                for m in matches]
     except Exception as e:
         logger.error(f"Error retrieving documents: {e}")
         return []
