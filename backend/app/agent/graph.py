@@ -1,4 +1,5 @@
 
+from typing import TypedDict, Optional, List
 from langgraph.graph import StateGraph
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -17,7 +18,11 @@ Guidelines:
 - Do not make up information not present in the context.
 - Keep your response focused and practical."""
 
-class State(dict): pass
+class State(TypedDict, total=False):
+    query: str
+    department: Optional[str]
+    steps: List[dict]
+    response: str
 
 def retrieve_node(state):
     steps = retrieve(state["query"], state.get("department"))
