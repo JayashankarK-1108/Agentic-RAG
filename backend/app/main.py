@@ -20,9 +20,14 @@ api.add_middleware(
     allow_headers=["*"],
 )
 
+class ChatMessage(BaseModel):
+    role: str   # "user" or "assistant"
+    content: str = Field(..., max_length=10000)
+
 class Query(BaseModel):
     query: str = Field(..., min_length=1, max_length=10000)
     department: str | None = Field(None, max_length=100)
+    history: list[ChatMessage] = Field(default_factory=list)
 
 @api.get("/health")
 def health():
@@ -31,7 +36,12 @@ def health():
 @api.post("/chat")
 def chat(q: Query):
     try:
-        result = app_graph.invoke({"query": q.query, "department": q.department})
+        history = [{"role": m.role, "content": m.content} for m in q.history]
+        result = app_graph.invoke({
+            "query": q.query,
+            "department": q.department,
+            "history": history,
+        })
         return {"response": result["response"]}
     except Exception as e:
         logger.error(f"Error processing chat request: {e}", exc_info=True)

@@ -170,10 +170,16 @@ async function send() {
   showTyping();
 
   try {
+    // Send last 10 messages as history (excluding the current message just added)
+    const history = s.messages.slice(0, -1).slice(-10).map(m => ({
+      role: m.role === 'user' ? 'user' : 'assistant',
+      content: m.text,
+    }));
+
     const res = await fetch(`${API_URL}/chat`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ query: text }),
+      body:    JSON.stringify({ query: text, history }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));

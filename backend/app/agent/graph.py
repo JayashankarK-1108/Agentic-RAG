@@ -3,7 +3,7 @@ import re
 from typing import TypedDict, Optional, List
 from langgraph.graph import StateGraph
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from app.agent.tools import retrieve, store_feedback
 
 llm = ChatOpenAI(model="gpt-4o", temperature=0.2)
@@ -46,9 +46,21 @@ def _is_chitchat(text: str) -> bool:
 class State(TypedDict, total=False):
     query: str
     department: Optional[str]
+    history: List[dict]   # [{"role": "user"|"assistant", "content": "..."}]
     steps: List[dict]
     chitchat: bool
     response: str
+
+
+def _build_history_messages(history: List[dict]) -> list:
+    """Convert history dicts to LangChain message objects."""
+    msgs = []
+    for m in history:
+        if m.get("role") == "user":
+            msgs.append(HumanMessage(content=m["content"]))
+        elif m.get("role") == "assistant":
+            msgs.append(AIMessage(content=m["content"]))
+    return msgs
 
 
 def retrieve_node(state):
@@ -64,12 +76,15 @@ def generate_node(state):
     steps = state.get("steps", [])
     is_chitchat = state.get("chitchat", False)
 
+    history = state.get("history", [])
+
     # ── Greeting / small talk ──────────────────────────────────────
     if is_chitchat:
-        messages = [
-            SystemMessage(content=CHITCHAT_PROMPT),
-            HumanMessage(content=query),
-        ]
+        messages = (
+            [SystemMessage(content=CHITCHAT_PROMPT)]
+            + _build_history_messages(history)
+            + [HumanMessage(content=query)]
+        )
         return {"response": llm.invoke(messages).content}
 
     # ── No relevant KB results ─────────────────────────────────────
@@ -82,13 +97,14 @@ def generate_node(state):
 
     # ── Build context and call LLM ─────────────────────────────────
     context = "\n\n".join(f"[Context {i}]: {s['text']}" for i, s in enumerate(steps, 1))
-    messages = [
-        SystemMessage(content=SYSTEM_PROMPT),
-        HumanMessage(content=(
+    messages = (
+        [SystemMessage(content=SYSTEM_PROMPT)]
+        + _build_history_messages(history)
+        + [HumanMessage(content=(
             f"Context from knowledge base:\n{context}\n\n"
             f"User question: {query}"
-        )),
-    ]
+        ))]
+    )
     answer = llm.invoke(messages).content
 
     # ── Collect ordered, unique image URLs from retrieved chunks ───
