@@ -5,7 +5,7 @@ from langchain_openai import OpenAIEmbeddings
 from app.db.pinecone_client import upsert
 
 logger = logging.getLogger(__name__)
-embedder = OpenAIEmbeddings()
+embedder = OpenAIEmbeddings(model="text-embedding-3-small")
 
 def store_steps(steps, source="unknown"):
     vectors = []

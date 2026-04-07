@@ -6,7 +6,7 @@ from langchain_openai import OpenAIEmbeddings
 from app.db.pinecone_client import query
 
 logger = logging.getLogger(__name__)
-embedder = OpenAIEmbeddings()
+embedder = OpenAIEmbeddings(model="text-embedding-3-small")
 
 _FEEDBACK_FILE = os.path.join(os.path.dirname(__file__), "../db/feedback.json")
 
