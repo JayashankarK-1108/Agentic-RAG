@@ -25,6 +25,7 @@ jobs:
       - name: Run ingestion script
         working-directory: ./backend
         env:
+          PYTHONUNBUFFERED: "1"
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
           PINECONE_INDEX: ${{ secrets.PINECONE_INDEX }}
@@ -32,12 +33,12 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
           S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
-        run: python -m scripts.run_ingestion
-      
+        run: python -u -m scripts.run_ingestion
+
       - name: Log ingestion completion
         if: success()
-        run: echo "PDF ingestion to vector database completed successfully"
-      
+        run: echo "✓ Ingestion pipeline completed successfully — check step above for full stats."
+
       - name: Log ingestion failure
         if: failure()
-        run: echo "PDF ingestion failed. Check logs for details."
+        run: echo "✗ Ingestion pipeline failed — check the Run ingestion script step for errors."
