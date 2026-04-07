@@ -89,16 +89,27 @@ const WELCOME_HTML = `
 
 function parseResponse(text) {
   if (!text) return '';
-  return text.split('\n')
-    .map(line => {
-      if (!line.trim()) return '';
-      if (line.startsWith('Image:')) {
-        const url = line.replace('Image:', '').trim();
-        return url ? `<img class="step-image" src="${url}" alt="step screenshot"/>` : '';
-      }
-      return `<p>${esc(line)}</p>`;
-    })
-    .join('');
+
+  // 1. Extract all Image: lines and replace with unique placeholders
+  const images = [];
+  const withPlaceholders = text.replace(/^Image:\s*(.+)$/gm, (_, url) => {
+    const idx = images.length;
+    images.push(url.trim());
+    return `%%IMG_${idx}%%`;
+  });
+
+  // 2. Render markdown (handles **bold**, numbered lists, paragraphs, etc.)
+  const html = typeof marked !== 'undefined'
+    ? marked.parse(withPlaceholders)
+    : withPlaceholders.split('\n').map(l => l.trim() ? `<p>${esc(l)}</p>` : '').join('');
+
+  // 3. Replace placeholders back with <img> tags
+  return html.replace(/%%IMG_(\d+)%%/g, (_, idx) => {
+    const url = images[parseInt(idx)];
+    return url
+      ? `<img class="step-image" src="${url}" alt="step screenshot" onerror="this.style.display='none'"/>`
+      : '';
+  });
 }
 
 function msgHTML(msg) {

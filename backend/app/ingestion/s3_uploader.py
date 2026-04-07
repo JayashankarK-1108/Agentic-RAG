@@ -4,8 +4,8 @@ import uuid
 import traceback
 from app.config import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET_NAME
 
-# Presigned URLs valid for 7 days — regenerated on every ingestion run
-PRESIGNED_URL_EXPIRY = 604800
+# Presigned URLs valid for 1 year — regenerated on every ingestion run
+PRESIGNED_URL_EXPIRY = 31536000
 
 s3 = boto3.client(
     "s3",
