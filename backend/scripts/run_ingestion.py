@@ -6,6 +6,7 @@ from app.ingestion.multimodal_loader import extract_document
 from app.ingestion.processor import create_steps
 from app.ingestion.embedder import store_steps
 from app.db.pinecone_client import clear_index, delete_by_source, get_index_stats
+from app.ingestion.s3_uploader import test_s3_connection
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -82,6 +83,12 @@ def _print_summary(doc_count, total_chunks, total_vectors, total_upserted,
 # ── Main ───────────────────────────────────────────────────
 
 _print_header()
+
+# ── Preflight: S3 connectivity check ───────────────────────
+s3_ok, s3_msg = test_s3_connection()
+print(f"\n  S3 Connection  : {'✓' if s3_ok else '✗'} {s3_msg}")
+if not s3_ok:
+    print(f"  ⚠  Images will NOT be uploaded — check AWS credentials and bucket name.")
 
 pdf_dir   = os.path.join(os.path.dirname(__file__), "../../data/pdfs")
 pdf_files = (

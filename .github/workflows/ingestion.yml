@@ -34,12 +34,14 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
           S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
-        run: python -u -m scripts.run_ingestion
+        run: |
+          python -u -m scripts.run_ingestion 2>&1 | tee /tmp/ingestion_output.txt
+          exit ${PIPESTATUS[0]}
 
-      - name: Log ingestion completion
-        if: success()
-        run: echo "✓ Ingestion pipeline completed successfully — check step above for full stats."
-
-      - name: Log ingestion failure
-        if: failure()
-        run: echo "✗ Ingestion pipeline failed — check the Run ingestion script step for errors."
+      - name: Publish ingestion summary
+        if: always()
+        run: |
+          echo '## Ingestion Pipeline Results' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat /tmp/ingestion_output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
