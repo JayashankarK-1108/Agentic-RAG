@@ -23,12 +23,8 @@ services:
 
   - type: static
     name: agentic-rag-frontend
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/build
-    envVars:
-      - key: REACT_APP_API_URL
-        scope: secret
+    staticPublishPath: frontend
     routes:
       - type: rewrite
-        source: /
+        source: /*
         destination: /index.html

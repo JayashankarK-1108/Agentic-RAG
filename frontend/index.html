@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KB Assistant</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- ── Sidebar ── -->
+    <div class="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <path d="M14 2L26 8V20L14 26L2 20V8L14 2Z" fill="#D97706" fill-opacity="0.9"/>
+            <path d="M14 7L21 11V17L14 21L7 17V11L14 7Z" fill="#FDE68A"/>
+          </svg>
+        </div>
+        <span class="brand-name">KB Assistant</span>
+      </div>
+
+      <button class="new-chat-btn" id="new-chat-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        New Chat
+      </button>
+
+      <div class="sessions-section">
+        <div class="sessions-label">Recent</div>
+        <div class="sessions-list" id="sessions-list"></div>
+      </div>
+    </div>
+
+    <!-- ── Chat Pane ── -->
+    <div class="chat-pane">
+      <div class="chat-topbar">
+        <span class="topbar-title" id="topbar-title">New Chat</span>
+      </div>
+
+      <div class="chat-messages" id="chat-messages"></div>
+
+      <div class="chat-input-area">
+        <div class="input-box" id="input-box">
+          <textarea id="chat-input" placeholder="Message KB Assistant…" rows="1"></textarea>
+          <button class="send-btn" id="send-btn" disabled title="Send message">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="19" x2="12" y2="5"/>
+              <polyline points="5 12 12 5 19 12"/>
+            </svg>
+          </button>
+        </div>
+        <p class="input-hint">Enter to send &nbsp;·&nbsp; Shift+Enter for new line</p>
+      </div>
+    </div>
+
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
