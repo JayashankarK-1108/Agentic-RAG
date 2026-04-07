@@ -25,10 +25,10 @@ services:
     name: agentic-rag-frontend
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/build
+    envVars:
+      - key: REACT_APP_API_URL
+        scope: secret
     routes:
       - type: rewrite
         source: /
         destination: /index.html
-      - type: rewrite
-        source: /api/*
-        destination: http://agentic-rag-backend:10000/$1
