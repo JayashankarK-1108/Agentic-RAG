@@ -34,8 +34,8 @@ def chat(q: Query):
         result = app_graph.invoke({"query": q.query, "department": q.department})
         return {"response": result["response"]}
     except Exception as e:
-        logger.error(f"Error processing chat request: {e}")
-        raise HTTPException(status_code=500, detail="An error occurred while processing your request")
+        logger.error(f"Error processing chat request: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Serve frontend static files — must be mounted LAST so API routes take priority
 _frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../frontend"))
