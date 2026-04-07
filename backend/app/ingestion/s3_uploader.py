@@ -1,6 +1,6 @@
 
 import boto3
-import uuid
+import hashlib
 import traceback
 from app.config import AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, S3_BUCKET_NAME
 
@@ -32,7 +32,8 @@ def upload_image(file_bytes, filename):
     Returns the URL string, or None if upload fails.
     """
     try:
-        key = f"images/{uuid.uuid4()}_{filename}"
+        content_hash = hashlib.md5(file_bytes).hexdigest()
+        key = f"images/{content_hash}_{filename}"
         s3.put_object(
             Bucket=S3_BUCKET_NAME,
             Key=key,
