@@ -18,31 +18,63 @@ Guidelines:
 - Do not make up information not present in the context.
 - Keep your response focused and practical."""
 
+CHITCHAT_PROMPT = """You are a friendly IT Knowledge Base Assistant. \
+Respond warmly to greetings and small talk in 1-2 sentences, \
+then let the user know you can help with IT processes and procedures."""
+
+# Patterns that indicate a greeting / small talk (not an IT query)
+_CHITCHAT_PATTERNS = [
+    "hello", "hi", "hey", "good morning", "good afternoon",
+    "good evening", "good day", "how are you", "how r you",
+    "my name is", "i am ", "i'm ", "thanks", "thank you",
+    "bye", "goodbye", "see you", "take care", "nice to meet",
+]
+
+def _is_chitchat(text: str) -> bool:
+    t = text.lower().strip()
+    # Short messages (≤15 words) that match a greeting pattern
+    return len(t.split()) <= 15 and any(pat in t for pat in _CHITCHAT_PATTERNS)
+
+
 class State(TypedDict, total=False):
     query: str
     department: Optional[str]
     steps: List[dict]
+    chitchat: bool
     response: str
 
+
 def retrieve_node(state):
-    steps = retrieve(state["query"], state.get("department"))
-    return {"steps": steps}
+    query_text = state["query"]
+    if _is_chitchat(query_text):
+        return {"steps": [], "chitchat": True}
+    steps = retrieve(query_text, state.get("department"))
+    return {"steps": steps, "chitchat": False}
+
 
 def generate_node(state):
-    steps = state["steps"]
     query = state["query"]
+    steps = state.get("steps", [])
+    is_chitchat = state.get("chitchat", False)
 
+    # ── Greeting / small talk ──────────────────────────────────────
+    if is_chitchat:
+        messages = [
+            SystemMessage(content=CHITCHAT_PROMPT),
+            HumanMessage(content=query),
+        ]
+        return {"response": llm.invoke(messages).content}
+
+    # ── No relevant KB results ─────────────────────────────────────
     if not steps:
         store_feedback(query)
-        return {"response": "I could not find relevant information in the knowledge base for your query. Please try rephrasing your question."}
+        return {"response": (
+            "I could not find relevant information in the knowledge base for your query. "
+            "Please try rephrasing your question or ask about a specific IT process."
+        )}
 
-    # Build context from retrieved chunks
-    context_parts = []
-    for i, s in enumerate(steps, start=1):
-        context_parts.append(f"[Context {i}]: {s['text']}")
-    context = "\n\n".join(context_parts)
-
-    # Call LLM with system prompt + retrieved context + user query
+    # ── Build context and call LLM ─────────────────────────────────
+    context = "\n\n".join(f"[Context {i}]: {s['text']}" for i, s in enumerate(steps, 1))
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),
         HumanMessage(content=(
@@ -50,28 +82,21 @@ def generate_node(state):
             f"User question: {query}"
         )),
     ]
-    llm_response = llm.invoke(messages)
-    answer = llm_response.content
+    answer = llm.invoke(messages).content
 
-    # Only attach images if the answer references a process/procedure (not a greeting/chitchat)
-    process_keywords = ["step", "click", "open", "go to", "navigate", "select", "enter",
-                        "configure", "install", "enable", "disable", "set", "create",
-                        "process", "follow", "procedure"]
-    answer_lower = answer.lower()
-    is_process_answer = any(kw in answer_lower for kw in process_keywords)
-
-    if is_process_answer:
-        seen = set()
-        image_lines = []
-        for s in steps:
-            for img in s.get("images", []):
-                if img and img not in seen:
-                    seen.add(img)
-                    image_lines.append(f"Image: {img}")
-        if image_lines:
-            answer += "\n\n" + "\n".join(image_lines)
+    # ── Attach unique images from retrieved chunks ─────────────────
+    seen = set()
+    image_lines = []
+    for s in steps:
+        for img in s.get("images", []):
+            if img and img not in seen:
+                seen.add(img)
+                image_lines.append(f"Image: {img}")
+    if image_lines:
+        answer += "\n\n" + "\n".join(image_lines)
 
     return {"response": answer}
+
 
 graph = StateGraph(State)
 graph.add_node("retrieve", retrieve_node)
