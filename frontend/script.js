@@ -175,11 +175,15 @@ async function send() {
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ query: text }),
     });
-    if (!res.ok) throw new Error(`Server error ${res.status}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(`[${res.status}] ${err.detail || res.statusText}`);
+    }
     const data = await res.json();
     s.messages.push({ role: 'bot', text: data.response });
   } catch (err) {
-    s.messages.push({ role: 'bot', text: 'Sorry, I could not get a response. Please try again.' });
+    s.messages.push({ role: 'bot', text: `⚠ Error: ${err.message}` });
+    console.error('Chat error:', err);
   } finally {
     hideTyping();
     isLoading = false;
