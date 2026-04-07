@@ -34,7 +34,7 @@ def upload_image(file_bytes, filename, source=None):
     """
     try:
         content_hash = hashlib.md5(file_bytes).hexdigest()
-        folder = f"images/{source}" if source else "images"
+        folder = source if source else "images"
         key = f"{folder}/{content_hash}_{filename}"
         s3.put_object(
             Bucket=S3_BUCKET_NAME,
