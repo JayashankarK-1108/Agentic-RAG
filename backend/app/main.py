@@ -38,6 +38,9 @@ def chat(q: Query):
         raise HTTPException(status_code=500, detail="An error occurred while processing your request")
 
 # Serve frontend static files — must be mounted LAST so API routes take priority
-_frontend_dir = os.path.join(os.path.dirname(__file__), "../../../frontend")
+_frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../frontend"))
 if os.path.isdir(_frontend_dir):
+    logger.info(f"Serving frontend from: {_frontend_dir}")
     api.mount("/", StaticFiles(directory=_frontend_dir, html=True), name="frontend")
+else:
+    logger.warning(f"Frontend directory not found at: {_frontend_dir}")
