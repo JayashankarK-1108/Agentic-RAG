@@ -1,6 +1,8 @@
 
 import logging
+import os
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 from app.agent.graph import app_graph
@@ -22,8 +24,8 @@ class Query(BaseModel):
     query: str = Field(..., min_length=1, max_length=10000)
     department: str | None = Field(None, max_length=100)
 
-@api.get("/")
-def root():
+@api.get("/health")
+def health():
     return {"status": "running"}
 
 @api.post("/chat")
@@ -34,3 +36,8 @@ def chat(q: Query):
     except Exception as e:
         logger.error(f"Error processing chat request: {e}")
         raise HTTPException(status_code=500, detail="An error occurred while processing your request")
+
+# Serve frontend static files — must be mounted LAST so API routes take priority
+_frontend_dir = os.path.join(os.path.dirname(__file__), "../../../frontend")
+if os.path.isdir(_frontend_dir):
+    api.mount("/", StaticFiles(directory=_frontend_dir, html=True), name="frontend")

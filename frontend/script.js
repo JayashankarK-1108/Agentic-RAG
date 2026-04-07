@@ -1,6 +1,6 @@
 // ── Backend URL ─────────────────────────────────────────────
-// Update this to your Render backend URL
-const API_URL = 'https://agentic-rag-4oc4.onrender.com';
+// Uses the same origin — works both locally and on Render
+const API_URL = window.location.origin;
 
 // ── State ────────────────────────────────────────────────────
 let sessions  = [];
