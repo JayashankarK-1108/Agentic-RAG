@@ -1,0 +1,11 @@
+
+fastapi
+uvicorn
+langchain
+langchain-openai
+langgraph
+openai
+pinecone
+boto3
+pymupdf
+python-dotenv
