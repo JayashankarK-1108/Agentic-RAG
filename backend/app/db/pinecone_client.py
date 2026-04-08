@@ -21,11 +21,15 @@ def upsert(vectors):
         raise
 
 def clear_index():
-    """Delete ALL vectors from the index."""
+    """Delete ALL vectors from the index. Safe to call on an empty index."""
     try:
         index.delete(delete_all=True)
         return True
     except Exception as e:
+        # Pinecone raises 404 "Namespace not found" when the index is already empty
+        if "Namespace not found" in str(e) or "404" in str(e):
+            print("  Index already empty — skipping clear.")
+            return True
         print(f"Error clearing index: {e}")
         raise
 
