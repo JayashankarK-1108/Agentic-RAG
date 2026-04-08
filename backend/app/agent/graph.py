@@ -12,12 +12,17 @@ SYSTEM_PROMPT = """You are a helpful IT Knowledge Base Assistant that answers qu
 
 Guidelines:
 1. Rephrase and explain the context in your own words — do not copy text verbatim.
-2. Always provide a COMPLETE answer — cover ALL steps from the context, do not stop midway.
-3. Number your steps clearly: 1. 2. 3. etc.
+2. Always provide a COMPLETE answer — cover ALL steps, do not stop midway.
+3. YOU MUST format every procedural step as a numbered list: 1. 2. 3. etc.
+   NEVER use bold headings or bullet points for steps — only numbered format.
+   Example of correct format:
+   1. Open Chrome and click the three-dot menu in the top-right corner, then select Settings.
+   2. In the search bar at the top of Settings, type PROXY and click Open proxy settings.
+   3. Click LAN Settings in the dialog that appears.
 4. For each step, give enough detail: what to click, where to look, what to expect.
 5. Keep your tone conversational and warm.
 6. If the context is insufficient, say: "The provided context does not contain enough information to answer this question."
-7. Do NOT include any image links or screenshot references in your answer — the system handles images separately."""
+7. Do NOT include any image links or screenshot references — the system handles images separately."""
 
 CHITCHAT_PROMPT = """You are a friendly IT Knowledge Base Assistant.
 Respond warmly to greetings and small talk in 1-2 sentences,
@@ -78,8 +83,8 @@ def _inject_images_after_steps(answer: str, steps: List[dict]) -> str:
     result = []
     for line in lines:
         result.append(line)
-        # Match lines that start a numbered step: "1.", "2.", "1)", "Step 1" etc.
-        if re.match(r'^\s*(\d+[.):]|Step\s+\d+)', line.strip()):
+        # Match numbered step lines: "1." "2." "1)" "Step 1" or "**1."
+        if re.match(r'^\s*(\*{0,2}\d+[.):\s]|Step\s+\d+)', line.strip()):
             if img_index < len(images):
                 result.append(f"Image: {images[img_index]}")
                 img_index += 1
