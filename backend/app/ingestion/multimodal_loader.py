@@ -32,7 +32,7 @@ def extract_pdf(file_path):
                 try:
                     xref = img[0]
                     base = doc.extract_image(xref)
-                    url = upload_image(base["image"], f"p{pno}_{i}.png", source=source)
+                    url = upload_image(base["image"], f"page{pno}_{i}.png", source=source)
                     if url:
                         imgs.append(url)
                         uploaded += 1
