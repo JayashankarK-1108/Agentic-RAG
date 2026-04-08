@@ -77,18 +77,24 @@ def _inject_images_after_steps(answer: str, steps: List[dict]) -> str:
     if not images:
         return answer
 
-    # Split into paragraphs (double newline or single newline numbered/bulleted lines)
-    # Each paragraph is one logical step — inject the next image after it
-    paragraphs = re.split(r'\n{2,}', answer.strip())
+    # Split by any newline (LLM may use single or double newlines between steps)
+    lines = answer.split("\n")
     result = []
     img_index = 0
-    for para in paragraphs:
-        result.append(para)
-        # Inject after every paragraph that looks like a step (not a short intro/outro)
-        if len(para.strip()) > 20 and img_index < len(images):
-            result.append(f"Image: {images[img_index]}")
+
+    for line in lines:
+        result.append(line)
+        stripped = line.strip()
+        # Inject after any substantive line (a real step, not blank or short intro)
+        is_step = (
+            len(stripped) > 30 and
+            not stripped.endswith(":")  # skip intro lines like "Follow these steps:"
+        )
+        if is_step and img_index < len(images):
+            result.append(f"\nImage: {images[img_index]}\n")
             img_index += 1
-    return "\n\n".join(result)
+
+    return "\n".join(result)
 
 
 def retrieve_node(state):
