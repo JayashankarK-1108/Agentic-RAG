@@ -12,14 +12,14 @@ from app.ingestion.s3_uploader import upload_image
 def extract_pdf(file_path):
     """
     Extract text and images from a PDF file.
-    Images are uploaded to S3 and their URLs stored with the page they appear on.
+    Each page becomes one step; images on that page are attached to it.
 
     Returns:
         pages      : list of {text, images}
         image_stats: {found, uploaded, failed}
     """
     try:
-        source = os.path.basename(file_path)   # e.g. "Proxy_Process.pdf"
+        source = os.path.basename(file_path)
         doc = fitz.open(file_path)
         pages = []
         found = uploaded = failed = 0
@@ -54,16 +54,14 @@ def extract_pdf(file_path):
 def _upload_docx_images(file_path):
     """
     Pre-upload every image inside the DOCX zip (word/media/*) to S3.
-    Returns a dict mapping relationship ID → S3 URL.
+    Returns a dict mapping relationship ID → S3 URL, and image stats.
     """
     rel_to_url = {}
     found = uploaded = failed = 0
-    source = os.path.basename(file_path)   # e.g. "WLAN_Process.docx"
+    source = os.path.basename(file_path)
 
     try:
         doc = Document(file_path)
-
-        # Build rId → (filename, raw bytes) from the document's relationships
         with zipfile.ZipFile(file_path) as zf:
             media = {os.path.basename(n): zf.read(n)
                      for n in zf.namelist() if n.startswith("word/media/")}
@@ -102,8 +100,12 @@ def _get_paragraph_image_rids(para):
 def extract_docx(file_path):
     """
     Extract text and images from a DOCX file.
-    Images are uploaded to S3 and associated with the section they appear in.
-    Sections are split on Heading-style paragraphs.
+
+    Paragraphs are processed in document order. Each step is a block of
+    text paragraphs followed by their image(s). When an image paragraph
+    is encountered, the accumulated text + that image are saved as one
+    step and we start fresh — so each image stays with the step it
+    belongs to in the document.
 
     Returns:
         pages      : list of {text, images}
@@ -114,44 +116,51 @@ def extract_docx(file_path):
         doc = Document(file_path)
 
         pages = []
-        section_lines  = []
-        section_images = []
+        pending_texts = []   # text lines accumulated since last image
+        pending_images = []  # images accumulated for current text block
 
-        def flush_section():
-            if section_lines:
+        def flush(extra_images=None):
+            """Save current pending text + images as one step."""
+            imgs = list(pending_images) + (extra_images or [])
+            if pending_texts:
                 pages.append({
-                    "text":   "\n".join(section_lines),
-                    "images": list(section_images)
+                    "text":   "\n".join(pending_texts),
+                    "images": imgs,
                 })
+                pending_texts.clear()
+                pending_images.clear()
 
         for para in doc.paragraphs:
-            # New heading → flush the previous section and start fresh
-            if para.style.name.startswith("Heading"):
-                flush_section()
-                section_lines  = []
-                section_images = []
-
             text = para.text.strip()
-            if text:
-                section_lines.append(text)
+            para_images = [
+                rel_to_url[rid]
+                for rid in _get_paragraph_image_rids(para)
+                if rid in rel_to_url
+            ]
 
-            # Collect images that appear in this paragraph
-            for rid in _get_paragraph_image_rids(para):
-                url = rel_to_url.get(rid)
-                if url and url not in section_images:
-                    section_images.append(url)
+            if para_images:
+                # This paragraph contains an image.
+                # If it also has text, include that text in the current block.
+                if text:
+                    pending_texts.append(text)
+                # Save the accumulated text with this image, then reset.
+                flush(extra_images=para_images)
+            elif text:
+                # Text-only paragraph — accumulate.
+                pending_texts.append(text)
 
-        # Also extract text from tables (attach all doc images to table rows)
-        all_urls = list(rel_to_url.values())
+        # Flush any trailing text that has no following image
+        flush()
+
+        # Also extract table rows (no specific image association)
         for table in doc.tables:
             for row in table.rows:
                 row_text = " | ".join(
                     cell.text.strip() for cell in row.cells if cell.text.strip()
                 )
                 if row_text:
-                    pages.append({"text": row_text, "images": all_urls})
+                    pages.append({"text": row_text, "images": []})
 
-        flush_section()
         return pages, img_stats
 
     except Exception as e:
