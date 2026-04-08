@@ -90,12 +90,12 @@ const WELCOME_HTML = `
 function parseResponse(text) {
   if (!text) return '';
 
-  // 1. Extract all Image: lines and replace with unique placeholders
+  // 1. Extract all Image: <url> occurrences (anywhere in text) and replace with placeholders
   const images = [];
-  const withPlaceholders = text.replace(/^Image:\s*(.+)$/gm, (_, url) => {
+  const withPlaceholders = text.replace(/Image:\s*(https?:\/\/[^\s\n]+)/g, (_, url) => {
     const idx = images.length;
     images.push(url.trim());
-    return `%%IMG_${idx}%%`;
+    return `\n%%IMG_${idx}%%\n`;
   });
 
   // 2. Render markdown (handles **bold**, numbered lists, paragraphs, etc.)
