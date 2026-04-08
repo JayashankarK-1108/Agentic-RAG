@@ -22,7 +22,7 @@ def retrieve(query_text, department=None):
             if m.get("score", 0) >= RELEVANCE_THRESHOLD
         ]
         logger.info(f"Retrieved {len(matches)} relevant chunks (threshold={RELEVANCE_THRESHOLD})")
-        return [{"text": m["metadata"]["text"], "images": m["metadata"].get("images", [])}
+        return [{"text": m["metadata"]["text"], "images": m["metadata"].get("image_urls", [])}
                 for m in matches]
     except Exception as e:
         logger.error(f"Error retrieving documents: {e}")
