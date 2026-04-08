@@ -62,8 +62,8 @@ def _build_history_messages(history: List[dict]) -> list:
 def _inject_images_after_steps(answer: str, steps: List[dict]) -> str:
     """
     Collect all images from retrieved steps in order, then inject them
-    after each numbered step line (1. ... 2. ... 3. ...) in the answer.
-    This is done entirely in the backend — no LLM involvement.
+    after each paragraph/step block in the answer — independent of how
+    the LLM chose to format the response.
     """
     # Collect unique image URLs in order from retrieved chunks
     seen = set()
@@ -77,18 +77,18 @@ def _inject_images_after_steps(answer: str, steps: List[dict]) -> str:
     if not images:
         return answer
 
-    # Find numbered step lines and inject the next image after each one
-    img_index = 0
-    lines = answer.split("\n")
+    # Split into paragraphs (double newline or single newline numbered/bulleted lines)
+    # Each paragraph is one logical step — inject the next image after it
+    paragraphs = re.split(r'\n{2,}', answer.strip())
     result = []
-    for line in lines:
-        result.append(line)
-        # Match numbered step lines: "1." "2." "1)" "Step 1" or "**1."
-        if re.match(r'^\s*(\*{0,2}\d+[.):\s]|Step\s+\d+)', line.strip()):
-            if img_index < len(images):
-                result.append(f"Image: {images[img_index]}")
-                img_index += 1
-    return "\n".join(result)
+    img_index = 0
+    for para in paragraphs:
+        result.append(para)
+        # Inject after every paragraph that looks like a step (not a short intro/outro)
+        if len(para.strip()) > 20 and img_index < len(images):
+            result.append(f"Image: {images[img_index]}")
+            img_index += 1
+    return "\n\n".join(result)
 
 
 def retrieve_node(state):
