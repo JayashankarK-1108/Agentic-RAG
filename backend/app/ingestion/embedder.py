@@ -14,10 +14,11 @@ def store_steps(steps, source="unknown"):
             "id": f"{source}-{i}",          # e.g. WLAN_Process.docx-0
             "values": emb,
             "metadata": {
-                "text":       s["text"],
-                "image_urls": s.get("images", []),
-                "page":       i,
-                "source":     source,
+                "text":        s["text"],
+                "image_urls":  s.get("images", []),
+                "image_order": "positioned",
+                "page":        i,
+                "source":      source,
             }
         })
     upserted_count = upsert(vectors)
