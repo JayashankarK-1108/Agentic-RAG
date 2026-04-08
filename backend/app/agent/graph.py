@@ -12,20 +12,12 @@ SYSTEM_PROMPT = """You are a helpful IT Knowledge Base Assistant that answers qu
 
 Guidelines:
 1. Rephrase and explain the context in your own words — do not copy text verbatim.
-2. Always provide a COMPLETE answer — cover ALL steps, do not stop midway.
-3. For each step, give enough detail so the user knows exactly what to click, where to look, and what to expect.
-4. Keep your tone conversational and warm.
-5. If the context is insufficient, say: "The provided context does not contain enough information to answer this question."
-6. IMPORTANT — Images: Each context block may include one or more image URLs labelled "Screenshot:".
-   When you write a numbered step, if that step's context block has a Screenshot URL, you MUST output
-   it on its own line immediately after that step using EXACTLY this format (no changes):
-   [SCREENSHOT: <url>]
-   Example:
-   1. Open Chrome and click the three-dot menu in the top-right corner, then select Settings.
-   [SCREENSHOT: https://example.com/image.png]
-   2. Scroll down and click Advanced.
-   [SCREENSHOT: https://example.com/image2.png]
-   If a context block has no screenshot, skip the tag for that step."""
+2. Always provide a COMPLETE answer — cover ALL steps from the context, do not stop midway.
+3. Number your steps clearly: 1. 2. 3. etc.
+4. For each step, give enough detail: what to click, where to look, what to expect.
+5. Keep your tone conversational and warm.
+6. If the context is insufficient, say: "The provided context does not contain enough information to answer this question."
+7. Do NOT include any image links or screenshot references in your answer — the system handles images separately."""
 
 CHITCHAT_PROMPT = """You are a friendly IT Knowledge Base Assistant.
 Respond warmly to greetings and small talk in 1-2 sentences,
@@ -62,19 +54,36 @@ def _build_history_messages(history: List[dict]) -> list:
     return msgs
 
 
-def _build_context(steps: List[dict]) -> str:
+def _inject_images_after_steps(answer: str, steps: List[dict]) -> str:
     """
-    Build context string with image URLs embedded per chunk so the LLM
-    knows exactly which screenshot belongs to which piece of content.
+    Collect all images from retrieved steps in order, then inject them
+    after each numbered step line (1. ... 2. ... 3. ...) in the answer.
+    This is done entirely in the backend — no LLM involvement.
     """
-    parts = []
-    for i, s in enumerate(steps, 1):
-        block = f"[Context {i}]:\n{s['text']}"
+    # Collect unique image URLs in order from retrieved chunks
+    seen = set()
+    images = []
+    for s in steps:
         for url in s.get("images", []):
-            if url:
-                block += f"\nScreenshot: {url}"
-        parts.append(block)
-    return "\n\n".join(parts)
+            if url and url not in seen:
+                seen.add(url)
+                images.append(url)
+
+    if not images:
+        return answer
+
+    # Find numbered step lines and inject the next image after each one
+    img_index = 0
+    lines = answer.split("\n")
+    result = []
+    for line in lines:
+        result.append(line)
+        # Match lines that start a numbered step: "1.", "2.", "1)", "Step 1" etc.
+        if re.match(r'^\s*(\d+[.):]|Step\s+\d+)', line.strip()):
+            if img_index < len(images):
+                result.append(f"Image: {images[img_index]}")
+                img_index += 1
+    return "\n".join(result)
 
 
 def retrieve_node(state):
@@ -108,8 +117,8 @@ def generate_node(state):
             "Please try rephrasing your question or ask about a specific IT process."
         )}
 
-    # ── Build context (with screenshot URLs embedded) and call LLM ─
-    context = _build_context(steps)
+    # ── Build context and call LLM (no image instructions) ─────────
+    context = "\n\n".join(f"[Context {i}]:\n{s['text']}" for i, s in enumerate(steps, 1))
     messages = (
         [SystemMessage(content=SYSTEM_PROMPT)]
         + _build_history_messages(history)
@@ -120,8 +129,8 @@ def generate_node(state):
     )
     answer = llm.invoke(messages).content
 
-    # ── Convert [SCREENSHOT: url] → Image: url for frontend ───────
-    answer = re.sub(r'\[SCREENSHOT:\s*(https?://[^\]]+)\]', r'Image: \1', answer)
+    # ── Inject images after numbered steps (backend-controlled) ────
+    answer = _inject_images_after_steps(answer, steps)
 
     return {"response": answer}
 
