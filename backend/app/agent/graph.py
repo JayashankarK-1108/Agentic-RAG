@@ -75,7 +75,11 @@ def _inject_images_after_steps(answer: str, steps: List[dict]) -> str:
                 images.append(url)
 
     if not images:
-        return answer
+        # DEBUG: show that no images were found in retrieved chunks
+        return answer + f"\n\n[DEBUG: 0 images found in {len(steps)} retrieved chunks]"
+
+    # DEBUG: prepend image count so we can confirm images are flowing through
+    answer = f"[DEBUG: {len(images)} image(s) found]\n\n" + answer
 
     # Split by any newline (LLM may use single or double newlines between steps)
     lines = answer.split("\n")
