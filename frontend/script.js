@@ -107,7 +107,7 @@ function parseResponse(text) {
   return html.replace(/%%IMG_(\d+)%%/g, (_, idx) => {
     const url = images[parseInt(idx)];
     return url
-      ? `<img class="step-image" src="${url}" alt="step screenshot"/>`
+      ? `<img class="step-image" src="${API_URL}/image-proxy?url=${encodeURIComponent(url)}" alt="step screenshot"/>`
       : '';
   });
 }

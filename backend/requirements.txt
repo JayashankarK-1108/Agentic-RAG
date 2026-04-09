@@ -2,6 +2,7 @@
 fastapi
 uvicorn
 aiofiles
+httpx
 langchain
 langchain-openai
 langgraph

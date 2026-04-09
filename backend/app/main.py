@@ -1,7 +1,9 @@
 
 import logging
 import os
+import httpx
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,6 +34,20 @@ class Query(BaseModel):
 @api.get("/health")
 def health():
     return {"status": "running"}
+
+@api.get("/image-proxy")
+async def image_proxy(url: str):
+    """Proxy S3 presigned images through the backend to avoid ad-blocker blocks."""
+    if not url.startswith("https://"):
+        raise HTTPException(status_code=400, detail="Invalid URL")
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        r = await client.get(url)
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail="Image fetch failed")
+        return StreamingResponse(
+            iter([r.content]),
+            media_type=r.headers.get("content-type", "image/png"),
+        )
 
 @api.post("/chat")
 def chat(q: Query):
