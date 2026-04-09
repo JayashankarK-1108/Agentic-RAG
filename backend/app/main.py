@@ -3,7 +3,6 @@ import logging
 import os
 import httpx
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,19 +37,17 @@ def health():
 @api.get("/image-proxy")
 async def image_proxy(url: str):
     """Proxy S3 presigned images through the backend to avoid ad-blocker/ORB blocks."""
-    from urllib.parse import unquote
     from fastapi.responses import Response
-    # Decode in case of double-encoding
-    decoded_url = unquote(url)
-    logger.info(f"Image proxy request for: {decoded_url[:100]}")
-    if not decoded_url.startswith("https://"):
-        raise HTTPException(status_code=400, detail=f"Invalid URL: {decoded_url[:80]}")
+    # FastAPI already URL-decodes query params once — do not decode again
+    logger.info(f"Image proxy request for: {url[:100]}")
+    if not url.startswith("https://"):
+        raise HTTPException(status_code=400, detail=f"Invalid URL: {url[:100]}")
     try:
         async with httpx.AsyncClient(follow_redirects=True, timeout=15.0) as client:
-            r = await client.get(decoded_url)
+            r = await client.get(url)
         if r.status_code != 200:
-            logger.error(f"Image proxy fetch failed: {r.status_code} for {decoded_url[:80]}")
-            raise HTTPException(status_code=r.status_code, detail="Image fetch failed")
+            logger.error(f"Image proxy fetch failed: {r.status_code} for {url[:80]}")
+            raise HTTPException(status_code=r.status_code, detail=f"S3 returned {r.status_code}")
         return Response(
             content=r.content,
             media_type=r.headers.get("content-type", "image/png"),
